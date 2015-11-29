@@ -1,0 +1,10 @@
+
+--------------------------------------------------------------
+A) I would like a specific person to be my teammate:
+
+   YOUR NAME: Nishant Agarwal
+   TEAMMATE'S NAME: Krishna Gaurav
+   DO YOU HAVE A PREFERRED NAME FOR YOUR TEAM?PythonHunters
+--------------------------------------------------------------
+
+
