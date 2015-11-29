@@ -11,8 +11,8 @@ path_to_model = "/Users/nishantagarwal/stanford-ner-2015-04-20/classifiers/engli
 #train_sents = conll2000.chunked_sents('train.txt', chunk_types=['NP'])
 #test_sents = conll2000.chunked_sents('test.txt', chunk_types=['NP'])
 #chunker = ConsecutiveNPChunker(train_sents)
-l = 'But her daughter says the scrapbooks she found in the family\'s basement show she was a part of ateam that was every bit as sensational as the Edmonton Oilers in \
-Gretzky\'s time.'
+l = 'The school has turned its one-time metal shop - lost to budget cuts almost two years ago - \
+into a money-making professional fitness club.'
 #print chunker.parse(l)
 grammar = "NP: {<LOCATION><O>?<LOCATION>+}"
 qetag = StanfordNERTagger(path_to_model,path_to_jar)

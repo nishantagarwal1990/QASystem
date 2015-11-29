@@ -12,7 +12,7 @@ from nltk.corpus import wordnet as wn
 from nltk.tag import StanfordNERTagger
 
 path_to_jar = "/Users/nishantagarwal/stanford-ner-2015-04-20/stanford-ner.jar"
-path_to_model = "/Users/nishantagarwal/stanford-ner-2015-04-20/classifiers/english.muc.7class.distsim.crf.ser.gz"
+path_to_model = "/Users/nishantagarwal/stanford-ner-2015-04-20/classifiers/english.all.3class.distsim.crf.ser.gz"
 stopwords = ['is','a','an','the','are','who','when','where','what','why','who','in','at','on','by','can', 'could', 'may', \
 				'might', 'must', 'ought to', 'shall', 'should', 'will', 'would','am','was','were','does','do','did','has','have','had'\
 				,'to','of','we','i','he','she','me','they','that','each','him','his','hers','ours','her','you',\
@@ -39,7 +39,6 @@ slam_dunk = 20
 
 
 def wherequestype(question,sentences,sentence_score,ne_tagged_sent):
-	#print "here1"
 	found_phrase = 0
 	comp_sentences = sentences
 	sentences = [nltk.word_tokenize(sent) for sent in sentences]
@@ -61,15 +60,10 @@ def wherequestype(question,sentences,sentence_score,ne_tagged_sent):
 			max_val = sentence_score[i]
 			index = i
 
-	#ne_tagged_sent = nertag.tag(sentences[index])
-	#print ne_tagged_sent
-	#print sentence_score
-	#answer = ''
-	#answer = ' '.join([ne_tagged_sent[j][0] for j in xrange(len(ne_tagged_sent)) if ne_tagged_sent[j][1] == 'LOCATION' \
-										#or (ne_tagged_sent[j][0] == ',' and ne_tagged_sent[j+1][1] == 'LOCATION')])
+	
+	answer = ''	
 	if not found_phrase:
-		grammar = "NP: {<LOCATION><O>?<LOCATION>+}"
-		#l = nltk.word_tokenize(ne_tagged_sent[i])
+		grammar = """NP: {(<LOCATION><O>)?<LOCATION>+}"""
 		cp = nltk.RegexpParser(grammar)
 		tre = cp.parse(ne_tagged_sent[index])
 		for subtree in tre.subtrees():
@@ -92,7 +86,7 @@ def wherequestype(question,sentences,sentence_score,ne_tagged_sent):
 
 	if not found_phrase:
 		grammar = """
-					NP: {<IN>+<DT>+<JJ>*<NN><POS>?<NN>*}"""
+					NP: {<IN>+<DT>+<JJ>*<NN><POS>?<NN>+}"""
 		l = nltk.word_tokenize(comp_sentences[index])
 		tagged =  nltk.pos_tag(l)
 		cp = nltk.RegexpParser(grammar)
@@ -104,7 +98,6 @@ def wherequestype(question,sentences,sentence_score,ne_tagged_sent):
 		if found_phrase:
 			answer = ' '.join(word for word,pos in subtree.leaves())
 
-	print sentence_score
 
 	if not answer:
 		print ("Answer: "+comp_sentences[index]+'\n')
@@ -113,7 +106,7 @@ def wherequestype(question,sentences,sentence_score,ne_tagged_sent):
 		print ("Answer: "+answer+'\n')
 
 def whoquestype(question,sentences,sentence_score,ne_tagged_sent):
-	#print "here2"
+	found_phrase = 0
 	comp_sentences = sentences
 	sentences = [nltk.word_tokenize(sent) for sent in sentences]
 	ne_tagged_ques = nertag.tag(question)
@@ -150,18 +143,30 @@ def whoquestype(question,sentences,sentence_score,ne_tagged_sent):
 		if sentence_score[i] > max_val:
 			max_val = sentence_score[i]
 			index = i
+	
+	answer = ''
+	if not found_phrase:
+		grammar = """
+					NP: {(<PERSON><O>+)?(<PERSON>|ORGANIZATION)+}"""
+		cp = nltk.RegexpParser(grammar)
+		tre = cp.parse(ne_tagged_sent[index])
+		for subtree in tre.subtrees():
+			if subtree.label() == 'NP':
+				found_phrase = 1
+				break
+		if found_phrase:
+			answer = ' '.join(word for word,pos in subtree.leaves())
 
-	#ne_tagged_sent = nertag.tag(sentences[index])
-	#print ne_tagged_sent
-	#print sentence_score
-	#answer = ''
-	#answer = ' '.join([ne_tagged_sent[j][0] for j in xrange(len(ne_tagged_sent)) if ne_tagged_sent[j][1] == 'PERSON'\
-				#or ne_tagged_sent[j][1] == 'ORGANIZATION'])
 
-	print ("Answer: "+comp_sentences[index]+'\n')
+	if not answer:
+		print ("Answer: "+comp_sentences[index]+'\n')
+
+	else:
+		print ("Answer: "+answer+'\n')
+	
 
 def whenquestype(question,sentences,sentence_score,ne_tagged_sent):
-	#print "here3"
+	found_phrase = 0
 	comp_sentences = sentences
 	sentences = [nltk.word_tokenize(sent) for sent in sentences]
 	score = dict()
@@ -169,7 +174,7 @@ def whenquestype(question,sentences,sentence_score,ne_tagged_sent):
 		score[i] = 0
 	for i in xrange(len(sentence_score)):
 		for word,pos in ne_tagged_sent[i]:
-			if pos == 'DATE' or word in time:
+			if word in time:
 				score[i] += sentence_score[i]
 				score[i] += good_clue
 				break
@@ -190,17 +195,28 @@ def whenquestype(question,sentences,sentence_score,ne_tagged_sent):
 			max_val = score[i]
 			index = i
 
-	#ne_tagged_sent = nertag.tag(sentences[index])
-	#print ne_tagged_sent
-	#print sentence_score
-	#answer = ''
-	#answer = ' '.join([ne_tagged_sent[j][0] for j in xrange(len(ne_tagged_sent)) if ne_tagged_sent[j][1] == 'DATE'\
-				#or ne_tagged_sent[j][1] in months])
+	answer = ''
+	if not found_phrase:
+		grammar = """
+					NP: {<IN>?(<CD>?<TO>?<CD>?|<DT><NN>)}"""
+		cp = nltk.RegexpParser(grammar)
+		tre = cp.parse(ne_tagged_sent[index])
+		for subtree in tre.subtrees():
+			if subtree.label() == 'NP':
+				found_phrase = 1
+				break
+		if found_phrase:
+			answer = ' '.join(word for word,pos in subtree.leaves())
 
-	print ("Answer: "+comp_sentences[index]+'\n')
+
+	if not answer:
+		print ("Answer: "+comp_sentences[index]+'\n')
+
+	else:
+		print ("Answer: "+answer+'\n')
 
 def whatquestype(question,sentences,sentence_score,ne_tagged_sent):
-	#print "here4"
+	found_phrase = 0
 	comp_sentences = sentences
 	sentences = [nltk.word_tokenize(sent) for sent in sentences]
 	pos_ques = nltk.pos_tag(question)
@@ -308,13 +324,13 @@ def howquestype(question,sentences,sentence_score,ne_tagged_sent):
 	for i in xrange(len(sentence_score)):
 		for word,pos in ne_tagged_sent[i]:
 			if lower_question[index_how+1] == 'much' or (lower_question[index_how+1] == 'many' and lower_question[index_how+2] in cost):
-				if pos == 'MONEY' or word in cost:
+				if word in cost or (word.isdigit() and any(w in sentences[i] for w in cost)):
 					sentence_score[i] += confident
 					break
-			if (pos == 'DATE' or pos == 'TIME') and (word in ['age','old','years','yrs']) and ('age' in question or 'old' in question):
+			if (word in ['age','old','years','yrs']) and ('age' in question or 'old' in question):
 				sentence_score[i] += confident
 				break
-			if lower_question[index_how+1] == 'many' and word.isdigit() and (pos not in ['MONEY','DATE','TIME']) and \
+			if lower_question[index_how+1] == 'many' and word.isdigit() and (word not in time or word not in cost) and \
 				lower_question[index_how+2] in sentences[i]:
 				#print word
 				#print ne_tagged_sent[i]
@@ -400,13 +416,13 @@ def parsequestions(questionsfilepath,sentences,ne_tagged_sent):
 			#print sentence_score
 			if 'Where' in question:
 				wherequestype(question,sentences,sentence_score,ne_tagged_sent)
-'''
+			
 			elif 'Who' in question:
 				whoquestype(question,sentences,sentence_score,ne_tagged_sent)
 
 			elif 'When' in question:
 				whenquestype(question,sentences,sentence_score,ne_tagged_sent)
-
+			'''
 			elif 'What' in question or 'what' in question:
 				whatquestype(question,sentences,sentence_score,ne_tagged_sent)
 
@@ -424,7 +440,7 @@ def parsequestions(questionsfilepath,sentences,ne_tagged_sent):
 
 			else:
 				print 'Answer: '+'\n'
-'''
+			'''
 
 def parseinputfiles(lines,path):
 	
