@@ -631,6 +631,8 @@ mm
 dd
 yy
 yyyy
+a.m.
+p.m.
 a.m
 p.m
 am
@@ -654,6 +656,15 @@ era
 future
 generation
 hour
+hours
+minutes
+seconds
+hrs
+mins
+secs
+sec
+min
+hr
 life
 moment
 month

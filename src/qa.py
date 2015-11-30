@@ -8,7 +8,7 @@ os.environ['CLASSPATH']=jar_folder
 import re
 
 from nltk.stem.snowball import SnowballStemmer
-from nltk.stem.wordnet	import WordNetLemmatizer
+from nltk.stem	import WordNetLemmatizer
 from nltk.corpus import wordnet as wn
 from nltk.tag import StanfordNERTagger
 
@@ -39,7 +39,7 @@ confident = 6
 slam_dunk = 20
 punctuation = list(string.punctuation) + ["''","...","``",'""']
 punctuation.remove("$")
-
+wordnet_lemmatizer = WordNetLemmatizer()
 
 def printanswer(sentence,question):
 	tok_sent = nltk.word_tokenize(sentence)
@@ -99,7 +99,6 @@ def wherequestype(question,sentences,sentence_score,ne_tagged_sent):
 	if not found_phrase:
 		grammar = """
 					NP: {<IN>+<DT>+<JJ>*<NN><POS>?<NN>+}"""
-		#l = nltk.word_tokenize(comp_sentences[index])
 		tagged =  nltk.pos_tag(sentences[index])
 		cp = nltk.RegexpParser(grammar)
 		tre = cp.parse(tagged)
@@ -206,7 +205,7 @@ def whenquestype(question,sentences,sentence_score,ne_tagged_sent):
 		if score[i] > max_val:
 			max_val = score[i]
 			index = i
-
+	'''
 	answer = ''
 	if not found_phrase:
 		grammar = """
@@ -227,6 +226,8 @@ def whenquestype(question,sentences,sentence_score,ne_tagged_sent):
 
 	else:
 		print ("Answer: "+answer+'\n')
+	'''
+	printanswer(comp_sentences[index],question)
 
 def whatquestype(question,sentences,sentence_score,ne_tagged_sent):
 	found_phrase = 0
@@ -273,7 +274,6 @@ def whatquestype(question,sentences,sentence_score,ne_tagged_sent):
 	printanswer(comp_sentences[index],question)
 
 def whyquestype(question,sentences,sentence_score,ne_tagged_sent):
-	#print "here5"
 	comp_sentences = sentences
 	sentences = [nltk.word_tokenize(sent) for sent in sentences]
 	best = list()
@@ -325,7 +325,6 @@ def whyquestype(question,sentences,sentence_score,ne_tagged_sent):
 	printanswer(comp_sentences[index],question)
 
 def howquestype(question,sentences,sentence_score,ne_tagged_sent):
-	#print "here6"
 	comp_sentences = sentences
 	sentences = [nltk.word_tokenize(sent) for sent in sentences]
 	lower_question = [w.lower() for w in question]
@@ -338,20 +337,22 @@ def howquestype(question,sentences,sentence_score,ne_tagged_sent):
 					break
 	for i in xrange(len(sentence_score)):
 		for word,pos in ne_tagged_sent[i]:
-			if lower_question[index_how+1] == 'much' or (lower_question[index_how+1] == 'many' and lower_question[index_how+2] in cost):
+			if lower_question[index_how+1] == 'much' or (lower_question[index_how+1] == 'many' and lower_question[index_how+2] in cost)\
+				or (lower_question[index_how+1] == 'many' and lower_question[index_how+2] in time):
 				if word in cost or (word.isdigit() and any(w in sentences[i] for w in cost)):
 					sentence_score[i] += confident
 					break
+				if ('time' in question or lower_question[index_how+2] in time) and word in time:
+					sentence_score[i] += confident
+					break  
 			if (word in ['age','old','years','yrs']) and ('age' in question or 'old' in question):
 				sentence_score[i] += confident
 				break
 			if lower_question[index_how+1] == 'many' and word.isdigit() and (word not in time or word not in cost) and \
 				lower_question[index_how+2] in sentences[i]:
-				#print word
-				#print ne_tagged_sent[i]
 				sentence_score[i] += slam_dunk
 				break
-
+			
 
 	max_val = -1
 	index = -1
@@ -404,32 +405,26 @@ def whichquestype(question,sentences,sentence_score,ne_tagged_sent):
 	#print ("Answer: "+comp_sentences[index]+'\n')
 	printanswer(comp_sentences[index],question)
 
-def wordmatch(question,sentences):
-	comp_sentences = sentences
-	sentences = [nltk.word_tokenize(sent) for sent in sentences]
-	lower_question = [word.lower() for word in question if word.lower() not in stopwords]
+def wordmatch(question,lemmatized_sent):
+	lower_question = [word.lower() for word in question if word.lower() not in stopwords and word.lower() not in punctuation]
 	#print lower_question
 	pos_question = nltk.pos_tag(lower_question)
-	lemmatized_sent = dict()
-	count = -1
-
-	for sent in sentences:
-			count +=1
-			lemmatized_sent[count] = [WordNetLemmatizer().lemmatize(w.lower()) for w in sent if w.lower() not in stopwords]
-
+	#print pos_question
+	
 	sentence_score = dict()
 	for i in xrange(len(lemmatized_sent)):
 		sentence_score[i] = 0
 
 	for word,pos in pos_question:
 		for i in xrange(len(lemmatized_sent)):
-			if WordNetLemmatizer().lemmatize(word) in lemmatized_sent[i]:
-				if 'VB' in pos:
+			if 'VB' in pos:
+				if wordnet_lemmatizer.lemmatize(word,pos='v') in lemmatized_sent[i]:
 					sentence_score[i] += verb_match
-				else:
+			else:
+				if wordnet_lemmatizer.lemmatize(word) in lemmatized_sent[i]:
 					sentence_score[i] += other_match
 
-	return sentence_score,comp_sentences
+	return sentence_score
 
 def parsestory(storyfilepath):
 	storyfile = open(storyfilepath)
@@ -442,20 +437,32 @@ def parsestory(storyfilepath):
 	ne_tagged_sent = list()
 	for sent in word_sent:
 		ne_tagged_sent.append(nertag.tag(sent))
-	#nertag = StanfordNERTagger(path_to_model,path_to_jar)
-	#for sent in sentences:
-		#namedent = nltk.ne_chunk(nltk.pos_tag(sent))
-		#print namedent
-		#print sentences
-		
-		#print nertag.tag(sent)
-		#print story
+	
 	return sentences,ne_tagged_sent
 
 def parsequestions(questionsfilepath,sentences,ne_tagged_sent):
 	questionidstring = 'QuestionID: '
 	questionstring = 'Question: '
 	questionsfile = open(questionsfilepath)
+	
+	comp_sentences = sentences
+	sentences = [nltk.word_tokenize(sent) for sent in sentences]
+	pos_sent = [nltk.pos_tag(sent) for sent in sentences]
+	lemmatized_sent = dict()
+	count = -1
+
+	for sent in pos_sent:
+		count +=1
+		lemmatized_sent[count] = list()
+		for word,pos in sent:
+			if word.lower() not in stopwords and word.lower() not in punctuation:
+				if 'VB' in pos:
+					lemmatized_sent[count].append(wordnet_lemmatizer.lemmatize(word.lower(),pos='v'))
+				else:
+					lemmatized_sent[count].append(wordnet_lemmatizer.lemmatize(word.lower()))
+	
+	sentences = comp_sentences
+		
 	for line in questionsfile.readlines():
 		line = line.rstrip('\n')
 		if questionidstring in line:
@@ -464,25 +471,23 @@ def parsequestions(questionsfilepath,sentences,ne_tagged_sent):
 		if questionstring in line:
 			question = line[10:]
 			question = nltk.word_tokenize(question)
-			#question = [word.lower() for word in question]
-			#print pos_question
-			#question = [word for word in question if word not in stopwords]
+			
 			sentence_score = dict()
-			sentence_score,sentences  = wordmatch(question,sentences)
-			#print sentence_score
-			if 'Where' in question:
+			sentence_score  = wordmatch(question,lemmatized_sent)
+	
+			if 'Where' in question or 'where' in question:
 				wherequestype(question,sentences,sentence_score,ne_tagged_sent)
 			
-			elif 'Who' in question:
+			elif 'Who' in question or 'who' in question:
 				whoquestype(question,sentences,sentence_score,ne_tagged_sent)
 
-			elif 'When' in question:
+			elif 'When' in question or 'when' in question:
 				whenquestype(question,sentences,sentence_score,ne_tagged_sent)
 			
 			elif 'What' in question or 'what' in question:
 				whatquestype(question,sentences,sentence_score,ne_tagged_sent)
 
-			elif 'Why' in question:
+			elif 'Why' in question or 'why' in question:
 				whyquestype(question,sentences,sentence_score,ne_tagged_sent)
 
 			elif 'How' in question or 'how' in question:
@@ -491,7 +496,7 @@ def parsequestions(questionsfilepath,sentences,ne_tagged_sent):
 			elif 'Which' in question or 'which' in question:
 				whichquestype(question,sentences,sentence_score,ne_tagged_sent)
 
-			elif 'Whose' in question or 'whose' in question:
+			elif 'Whose' in question or 'whose' in question or 'Whom' in question or 'whom' in question:
 				whoquestype(question,sentences,sentence_score,ne_tagged_sent)
 
 			else:
@@ -500,12 +505,10 @@ def parsequestions(questionsfilepath,sentences,ne_tagged_sent):
 
 def parseinputfiles(lines,path):
 	
-	#stopwords = nltk.corpus.stopwords.words('english')
 	for i in xrange(1,len(lines)):
 		storyfilepath = path+lines[i]+'.story'
 		questionsfilepath = path+lines[i]+'.questions'
 		sentences,ne_tagged_sent = parsestory(storyfilepath)
-		#print sentences
 		parsequestions(questionsfilepath,sentences,ne_tagged_sent)
 
 if __name__ == '__main__':

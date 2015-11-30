@@ -11,14 +11,14 @@ path_to_model = "/Users/nishantagarwal/stanford-ner-2015-04-20/classifiers/engli
 #train_sents = conll2000.chunked_sents('train.txt', chunk_types=['NP'])
 #test_sents = conll2000.chunked_sents('test.txt', chunk_types=['NP'])
 #chunker = ConsecutiveNPChunker(train_sents)
-l = 'The club, operated by a non-profit society made up of school and community volunteers, has sold more than 30 memberships and hired a \
-full-time co-ordinator.'
+l = 'When did the boys realize they were lost?'
 #print chunker.parse(l)
 grammar = "NP: {<LOCATION><O>?<LOCATION>+}"
 qetag = StanfordNERTagger(path_to_model,path_to_jar)
 l = nltk.word_tokenize(l)
 ne_tagged = qetag.tag(l)
 tagged =  nltk.pos_tag(l)
+print l
 print tagged
 print ne_tagged
 cp = nltk.RegexpParser(grammar)
