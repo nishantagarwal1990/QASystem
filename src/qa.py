@@ -28,7 +28,8 @@ months = ['january','february','march','april','may','june','july','august','sep
 location_prep = [line.strip() for line in open("location_prep.txt", 'r')]
 time = [line.strip() for line in open("time.txt", 'r')]
 prep = [line.strip() for line in open("prep.txt", 'r')]
-measure = ['sq','square','feet','ft','sq-ft','inches','cms','centimeters','yard','km','meter','m','mm','millimeter','long']
+measure = ['sq','square','feet','ft','sq-ft','inches','cms','centimeters','yard','km','meter','m','mm','millimeter','long','yrs'\
+			,'years','months','days','hrs','hours','mins','minutes','secs','seconds']
 cost = ['$','dollars','cost','price','cent','euro','million','nickle','penny','quarter','dime']
 nertag = StanfordNERTagger(path_to_model,path_to_jar)
 verb_match = 6
@@ -45,10 +46,12 @@ def printanswer(sentence,question):
 	tok_sent = nltk.word_tokenize(sentence)
 	filt_sent = list()
 	for w in tok_sent:
-		if (w.lower() not in stopwords) and (w not in punctuation) and (w not in question):
+		if (w not in punctuation) and (w not in question):
 			filt_sent.append(w)
-	
-	print("Answer: " + ' '.join(filt_sent)+'\n' )
+	if filt_sent:
+		print("Answer: " + ' '.join(filt_sent)+'\n' )
+	else:
+		print("Answer: "+sentence+'\n')
 
 def wherequestype(question,sentences,sentence_score,ne_tagged_sent):
 	found_phrase = 0
@@ -130,11 +133,11 @@ def whoquestype(question,sentences,sentence_score,ne_tagged_sent):
 				found_name = 1
 				break
 		for word,pos in ne_tagged_sent[i]:
-			if pos == 'PERSON':
+			if pos == 'PERSON' or pos == 'ORGANIZATION':
 				found_sent = 1
 				break
 		for word,pos in ne_tagged_ques:
-			if pos == 'PERSON':
+			if pos == 'PERSON' or pos == 'ORGANIZATION':
 				found_q = 1
 				break
 
@@ -184,7 +187,7 @@ def whenquestype(question,sentences,sentence_score,ne_tagged_sent):
 	for i in xrange(len(sentence_score)):
 		score[i] = 0
 	for i in xrange(len(sentence_score)):
-		for word,pos in ne_tagged_sent[i]:
+		for word in sentences[i]:
 			if word in time:
 				score[i] += sentence_score[i]
 				score[i] += good_clue
@@ -361,39 +364,22 @@ def howquestype(question,sentences,sentence_score,ne_tagged_sent):
 		if sentence_score[i] >= max_val:
 			max_val = sentence_score[i]
 			index = i
-
-	#print ("Answer: "+comp_sentences[index]+'\n')
+	
 	printanswer(comp_sentences[index],question)
 
 def whichquestype(question,sentences,sentence_score,ne_tagged_sent):
 	comp_sentences = sentences
 	sentences = [nltk.word_tokenize(sent) for sent in sentences]
 	lower_question = [w.lower() for w in question]
-	'''
-	index_how = lower_question.index('how')
-	if lower_question[index_how+1] in ['big','small','large','far','long','tall','short']:
-		for i in xrange(len(sentence_score)):
-			for word in sentences[i]:
-				if word in measure :
-					sentence_score[i] += slam_dunk
-					break
+	pos_sent = [nltk.pos_tag(sent) for sent in sentences]
+	ne_index = -1
 	for i in xrange(len(sentence_score)):
-		for word,pos in ne_tagged_sent[i]:
-			if lower_question[index_how+1] == 'much' or (lower_question[index_how+1] == 'many' and lower_question[index_how+2] in cost):
-				if word in cost or (word.isdigit() and any(w in sentences[i] for w in cost)):
-					sentence_score[i] += confident
-					break
-			if (word in ['age','old','years','yrs']) and ('age' in question or 'old' in question):
-				sentence_score[i] += confident
-				break
-			if lower_question[index_how+1] == 'many' and word.isdigit() and (word not in time or word not in cost) and \
-				lower_question[index_how+2] in sentences[i]:
-				#print word
-				#print ne_tagged_sent[i]
-				sentence_score[i] += slam_dunk
-				break
-
-	'''
+		for word,pos in pos_sent[i]:
+			if pos == 'NNP':
+				ne_index = sentences[i].index(word)
+				ne_word,ne_pos = ne_tagged_sent[i][ne_index]
+				if ne_pos != 'PERSON':
+					sentence_score[i] = confident
 	max_val = -1
 	index = -1
 	
@@ -471,32 +457,37 @@ def parsequestions(questionsfilepath,sentences,ne_tagged_sent):
 		if questionstring in line:
 			question = line[10:]
 			question = nltk.word_tokenize(question)
-			
+			questype = ''
+			if ',' in question:
+				qindex = question.index(',') 
+				if question[qindex+1] in ['where','who','when','what','why','how','which','whose','whom']:
+					questype = question[qindex+1]
 			sentence_score = dict()
 			sentence_score  = wordmatch(question,lemmatized_sent)
 	
-			if 'Where' in question or 'where' in question:
+			if ('Where' in question and not questype) or 'where' in question:
 				wherequestype(question,sentences,sentence_score,ne_tagged_sent)
 			
-			elif 'Who' in question or 'who' in question:
+			elif ('Who' in question and not questype) or 'who' in question:
 				whoquestype(question,sentences,sentence_score,ne_tagged_sent)
 
-			elif 'When' in question or 'when' in question:
+			elif ('When' in question  and not questype)or 'when' in question:
 				whenquestype(question,sentences,sentence_score,ne_tagged_sent)
 			
-			elif 'What' in question or 'what' in question:
+			elif ('What' in question  and not questype)or 'what' in question:
 				whatquestype(question,sentences,sentence_score,ne_tagged_sent)
 
-			elif 'Why' in question or 'why' in question:
+			elif ('Why' in question  and not questype)or 'why' in question:
 				whyquestype(question,sentences,sentence_score,ne_tagged_sent)
 
-			elif 'How' in question or 'how' in question:
+			elif ('How' in question  and not questype)or 'how' in question:
 				howquestype(question,sentences,sentence_score,ne_tagged_sent)
 			
-			elif 'Which' in question or 'which' in question:
+			elif ('Which' in question  and not questype)or 'which' in question:
 				whichquestype(question,sentences,sentence_score,ne_tagged_sent)
 
-			elif 'Whose' in question or 'whose' in question or 'Whom' in question or 'whom' in question:
+			elif ('Whose' in question  and not questype)or 'whose' in question or ('Whom' in question  and not questype) \
+				or 'whom' in question:
 				whoquestype(question,sentences,sentence_score,ne_tagged_sent)
 
 			else:
